@@ -1,0 +1,14 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, sans-serif; color: #17202a; background: #f4f7fb; }
+.topbar { padding: 1.5rem 8%; color: white; background: #173b68; }
+.topbar h1 { margin: 0 0 .3rem; }
+main { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; padding: 2rem 8%; }
+.products { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
+.product, .cart { padding: 1rem; border-radius: 12px; background: white; box-shadow: 0 3px 12px #17202a12; }
+.product h3 { margin-top: 0; }
+button { padding: .65rem .9rem; border: 0; border-radius: 7px; color: white; background: #176b45; cursor: pointer; }
+button:hover { background: #0f5134; }
+.cart ul { padding-left: 1.2rem; }
+.total { font-weight: bold; }
+footer { padding: 1rem; text-align: center; color: #596579; }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; padding: 1rem; } }
