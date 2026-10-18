@@ -1,4 +1,4 @@
-name: E-commerce CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,54 +7,82 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
-  test-and-build:
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Build
+        run: npm run build --if-present
       - name: Run tests
         run: npm test
-      - name: Build application
-        run: npm run build
-      - name: Upload packaged build
-        uses: actions/upload-artifact@v4
-        with:
-          name: ecommerce-app-build
-          path: dist/
 
-  deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: test-and-build
+  docker-deploy:
+    name: Docker Build and Compose Deploy
+    needs: build-and-test
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download packaged build
-        uses: actions/download-artifact@v4
-        with:
-          name: ecommerce-app-build
-          path: dist/
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker compose build
+      - name: Deploy with Docker Compose
+        run: docker compose up -d
+      - name: Wait for health check and smoke test
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS http://localhost:8080/health && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/ | grep -q "ShopEasy"
+          echo "Smoke test passed"
+          docker compose ps
+      - name: Show container logs
+        if: always()
+        run: docker compose logs
+      - name: Tear down
+        if: always()
+        run: docker compose down
+
+  monitoring-stack:
+    name: Deploy with Monitoring (Prometheus + Grafana)
+    needs: docker-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start app and monitoring stack
+        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d --build
+      - name: Generate traffic
+        run: |
+          for i in $(seq 1 20); do
+            curl -fs http://localhost:8080/health >/dev/null && break
+            sleep 2
+          done
+          for i in $(seq 1 50); do curl -fs http://localhost:8080/ >/dev/null; done
+          echo "Sent 50 requests"
+      - name: Verify Prometheus is scraping nginx
+        run: |
+          v=""
+          for i in $(seq 1 30); do
+            v=$(curl -s 'http://localhost:9090/api/v1/query?query=nginx_up' | jq -r '.data.result[0].value[1] // empty' || true)
+            [ "$v" = "1" ] && echo "nginx_up=1 (Prometheus is scraping nginx)" && break
+            sleep 3
+          done
+          [ "$v" = "1" ]
+      - name: Verify Grafana is healthy
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS http://localhost:3000/api/health && break
+            sleep 3
+          done
+          curl -fsS http://localhost:3000/api/health | grep -q '"database": "ok"'
+      - name: Show container status
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml ps
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
+

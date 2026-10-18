@@ -1,0 +1,12 @@
+Summary,Issue Type,Priority,Story Points,Description,Labels
+ShopEasy DevOps Pipeline,Epic,High,,End-to-end DevOps pipeline for the ShopEasy e-commerce demo,devops
+Product listing page,Story,High,3,As a shopper I can see the list of products with prices,frontend
+Add to cart,Story,High,3,As a shopper I can add products to my cart,frontend
+Cart total calculation,Story,Medium,2,As a shopper I see the correct cart total,frontend
+Checkout demo order,Story,Medium,2,As a shopper I can place a demo order,frontend
+Unit tests for cart logic,Task,High,2,Add node tests for calculateTotal and addToCart,testing
+Create Dockerfile and nginx config,Task,High,3,Containerise the app with nginx,docker
+GitHub Actions CI pipeline,Task,High,5,Build and test on every push and pull request,cicd
+Deploy with Docker Compose,Task,High,3,Automated deploy and smoke test in the pipeline,cicd
+Prometheus and Grafana monitoring,Task,Medium,5,Expose nginx metrics and build a Grafana dashboard,monitoring
+Architecture diagram and report,Task,Medium,2,Document the end-to-end workflow,docs
