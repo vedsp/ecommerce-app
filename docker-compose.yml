@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    image: shopeasy-web:latest
+    container_name: shopeasy-web
+    ports:
+      - "8080:80"
+    restart: unless-stopped
